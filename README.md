@@ -19,7 +19,11 @@ Other good options:
 
 ## Current Status
 
-MVP implemented as a local browser app. See [docs/PRD.md](docs/PRD.md) for the product requirements and [docs/OBS_MEET_SETUP.md](docs/OBS_MEET_SETUP.md) for the Google Meet setup path.
+MVP implemented as a local browser app.
+
+- [Product requirements](docs/PRD.md)
+- [OBS and Google Meet setup](docs/OBS_MEET_SETUP.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
 
 ## Run Locally
 
@@ -29,6 +33,16 @@ npm run dev
 ```
 
 Open `http://127.0.0.1:5173/`, click `Start camera`, then allow camera access.
+
+## Use in a Call
+
+AirInk does not replace your camera directly. The working call path is:
+
+```text
+AirInk browser window -> OBS Window Capture -> OBS Virtual Camera -> Google Meet
+```
+
+Use `Window Capture` in OBS for the real browser window where AirInk is running. Do not use OBS `Browser Source` for the MVP unless you have confirmed camera permission works inside OBS's embedded browser.
 
 ## Controls
 
