@@ -2,14 +2,29 @@
 
 AirInk is a local-first prototype for drawing directly inside a webcam feed using finger gestures, then sending that annotated feed into video calls through OBS Virtual Camera.
 
+## What It Does
 
-## Current Status
+AirInk lets you:
+
+- Draw on top of your live webcam feed with a thumb + index-finger pinch.
+- Erase nearby strokes by holding index + middle fingers up.
+- Pause hand tracking without turning off the camera.
+- Send the annotated camera feed into Google Meet through OBS Virtual Camera.
+
+## Status
 
 MVP implemented as a local browser app.
 
 - [Product requirements](docs/PRD.md)
 - [OBS and Google Meet setup](docs/OBS_MEET_SETUP.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
+
+## Requirements
+
+- macOS, Chrome, Brave, or another Chromium-based browser.
+- Node.js and npm.
+- OBS Studio for use inside Google Meet or other call apps.
+- A webcam with browser camera permission enabled.
 
 ## Run Locally
 
@@ -20,6 +35,8 @@ npm run dev
 
 Open `http://127.0.0.1:5173/`, click `Start camera`, then allow camera access.
 
+Before using it in a call, confirm drawing works inside the AirInk browser window.
+
 ## Use in a Call
 
 AirInk does not replace your camera directly. The working call path is:
@@ -29,6 +46,14 @@ AirInk browser window -> OBS Window Capture -> OBS Virtual Camera -> Google Meet
 ```
 
 Use `Window Capture` in OBS for the real browser window where AirInk is running. Do not use OBS `Browser Source` for the MVP unless you have confirmed camera permission works inside OBS's embedded browser.
+
+Short setup:
+
+1. Run AirInk and confirm drawing works in the browser.
+2. Click `Hide UI` in AirInk.
+3. In OBS, add `Window Capture` for the AirInk browser window.
+4. Start `OBS Virtual Camera`.
+5. In Google Meet, choose `OBS Virtual Camera`.
 
 ## Controls
 
@@ -47,12 +72,16 @@ Use `Window Capture` in OBS for the real browser window where AirInk is running.
 - `T`: toggle tracking.
 - `H`: toggle presentation mode.
 
-## MVP Direction
+## Tech Stack
 
-The first build should be a browser app:
+- TypeScript
+- Vite
+- MediaPipe Tasks Vision / Hand Landmarker
+- HTML Canvas
+- OBS Virtual Camera for call integration
 
-1. Capture webcam video.
-2. Track index finger and thumb with browser hand tracking.
-3. Draw on a canvas overlay when the user pinches.
-4. Compose webcam + drawing into a presentation view.
-5. Capture that view in OBS and publish it as `OBS Virtual Camera` for Google Meet.
+## Troubleshooting
+
+- Drawing works in AirInk but not in Meet: check that OBS is using `Window Capture` and Meet is using `OBS Virtual Camera`.
+- OBS preview is black: enable OBS under macOS Screen Recording permissions and restart OBS.
+- Camera turns on but tracking fails: see [Troubleshooting](docs/TROUBLESHOOTING.md).
