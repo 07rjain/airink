@@ -74,6 +74,8 @@ const pinchStartThreshold = 0.055;
 const pinchEndThreshold = 0.075;
 const requiredStableFrames = 2;
 const smoothing = 0.38;
+const wasmAssetPath = "/mediapipe/wasm";
+const handModelAssetPath = "/mediapipe/models/hand_landmarker.task";
 
 function setStatus(message: string, mode: "idle" | "ready" | "draw" | "warn" = "idle") {
   statusPill.textContent = message;
@@ -83,6 +85,17 @@ function setStatus(message: string, mode: "idle" | "ready" | "draw" | "warn" = "
 function setNotice(message: string) {
   notice.textContent = message;
   notice.classList.toggle("is-visible", message.length > 0);
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
 }
 
 function resizeCanvas() {
@@ -284,8 +297,7 @@ async function createHandLandmarker(
 ) {
   return HandLandmarker.createFromOptions(vision, {
     baseOptions: {
-      modelAssetPath:
-        "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+      modelAssetPath: handModelAssetPath,
       delegate,
     },
     runningMode: "VIDEO",
@@ -303,9 +315,7 @@ async function loadHandTracker() {
   state.trackingFailed = false;
   setStatus("Loading hand tracker", "idle");
 
-  const vision = await FilesetResolver.forVisionTasks(
-    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm",
-  );
+  const vision = await FilesetResolver.forVisionTasks(wasmAssetPath);
 
   try {
     state.handLandmarker = await createHandLandmarker(vision, "GPU");
@@ -323,7 +333,7 @@ async function initializeHandTracker() {
   try {
     await loadHandTracker();
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Hand tracking could not start.";
+    const message = getErrorMessage(error) || "Hand tracking could not start.";
     console.error("Hand tracking failed.", error);
     state.trackingFailed = true;
     state.trackingLoading = false;
@@ -361,7 +371,7 @@ async function startCamera() {
     setStatus("Camera ready", "ready");
     void initializeHandTracker();
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Camera could not start.";
+    const message = getErrorMessage(error) || "Camera could not start.";
     errorText.textContent = message;
     startButton.disabled = false;
     startButton.textContent = "Start camera";
