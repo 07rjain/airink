@@ -2,20 +2,6 @@
 
 AirInk is a local-first prototype for drawing directly inside a webcam feed using finger gestures, then sending that annotated feed into video calls through OBS Virtual Camera.
 
-## Repo Name Options
-
-Recommended: `airink`
-
-Other good options:
-
-- `airdraw-cam`
-- `gesturecam`
-- `camcanvas`
-- `fingerframe`
-- `meet-sketch`
-- `webcam-ink`
-- `airdraw`
-- `drawcam`
 
 ## Current Status
 
