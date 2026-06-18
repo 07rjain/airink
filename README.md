@@ -35,13 +35,16 @@ Open `http://127.0.0.1:5173/`, click `Start camera`, then allow camera access.
 - Move index finger: position cursor.
 - Pinch thumb + index finger: draw.
 - Release pinch: stop drawing.
+- Hold index + middle fingers up: erase nearby marker strokes.
 - `Undo`: remove the last stroke.
 - `Clear`: clear all strokes.
+- `Stop Tracking`: pause hand tracking while keeping the camera feed on.
 - `Mirror`: mirror the webcam feed.
 - `Cursor`: show or hide the fingertip cursor.
 - `Hide UI`: enter OBS-friendly presentation mode.
 - `Cmd/Ctrl + Z`: undo.
 - `C`: clear.
+- `T`: toggle tracking.
 - `H`: toggle presentation mode.
 
 ## MVP Direction

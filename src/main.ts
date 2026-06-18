@@ -40,6 +40,7 @@ const showCursorToggle = requiredElement<HTMLInputElement>("#show-cursor");
 const hideUiButton = requiredElement<HTMLButtonElement>("#hide-ui");
 const undoButton = requiredElement<HTMLButtonElement>("#undo");
 const clearButton = requiredElement<HTMLButtonElement>("#clear");
+const toggleTrackingButton = requiredElement<HTMLButtonElement>("#toggle-tracking");
 
 function requiredCanvasContext(target: HTMLCanvasElement) {
   const context = target.getContext("2d", { alpha: false });
@@ -68,16 +69,18 @@ const state = {
   trackingReady: false,
   trackingLoading: false,
   trackingFailed: false,
+  trackingPaused: false,
 };
 
 const pinchStartThreshold = 0.055;
 const pinchEndThreshold = 0.075;
 const requiredStableFrames = 2;
 const smoothing = 0.38;
+const eraserRadius = 34;
 const wasmAssetPath = "/mediapipe/wasm";
 const handModelAssetPath = "/mediapipe/models/hand_landmarker.task";
 
-function setStatus(message: string, mode: "idle" | "ready" | "draw" | "warn" = "idle") {
+function setStatus(message: string, mode: "idle" | "ready" | "draw" | "erase" | "warn" = "idle") {
   statusPill.textContent = message;
   statusPill.dataset.mode = mode;
 }
@@ -174,6 +177,40 @@ function endStroke() {
   state.activeStroke = null;
 }
 
+function eraseAt(point: Point) {
+  const remainingStrokes: Stroke[] = [];
+
+  for (const stroke of state.strokes) {
+    let segment: Point[] = [];
+
+    const flushSegment = () => {
+      if (segment.length > 1) {
+        remainingStrokes.push({
+          color: stroke.color,
+          size: stroke.size,
+          points: segment,
+        });
+      }
+
+      segment = [];
+    };
+
+    for (const strokePoint of stroke.points) {
+      const distance = Math.hypot(strokePoint.x - point.x, strokePoint.y - point.y);
+
+      if (distance <= eraserRadius) {
+        flushSegment();
+      } else {
+        segment.push(strokePoint);
+      }
+    }
+
+    flushSegment();
+  }
+
+  state.strokes = remainingStrokes;
+}
+
 function updatePinchState(pinchedNow: boolean) {
   if (pinchedNow) {
     state.stablePinchFrames += 1;
@@ -191,6 +228,24 @@ function updatePinchState(pinchedNow: boolean) {
     state.isPinched = false;
     endStroke();
   }
+}
+
+function isFingerExtended(landmarks: NormalizedLandmark[], tip: number, pip: number, mcp: number) {
+  return landmarks[tip].y < landmarks[pip].y - 0.015 && landmarks[pip].y < landmarks[mcp].y + 0.03;
+}
+
+function isFingerFolded(landmarks: NormalizedLandmark[], tip: number, pip: number) {
+  return landmarks[tip].y > landmarks[pip].y - 0.01;
+}
+
+function isTwoFingerEraserGesture(landmarks: NormalizedLandmark[]) {
+  const indexUp = isFingerExtended(landmarks, 8, 6, 5);
+  const middleUp = isFingerExtended(landmarks, 12, 10, 9);
+  const ringFolded = isFingerFolded(landmarks, 16, 14);
+  const pinkyFolded = isFingerFolded(landmarks, 20, 18);
+  const notPinching = getDistance(landmarks[4], landmarks[8]) > pinchEndThreshold;
+
+  return indexUp && middleUp && ringFolded && pinkyFolded && notPinching;
 }
 
 function drawStroke(stroke: Stroke) {
@@ -250,14 +305,15 @@ function drawFrame() {
   }
 }
 
-function updateCursor(point: Point | null, drawing: boolean) {
+function updateCursor(point: Point | null, mode: "idle" | "draw" | "erase") {
   if (!point || !showCursorToggle.checked) {
-    cursor.classList.remove("is-visible", "is-drawing");
+    cursor.classList.remove("is-visible", "is-drawing", "is-erasing");
     return;
   }
 
   cursor.style.transform = `translate(${point.x}px, ${point.y}px)`;
-  cursor.classList.toggle("is-drawing", drawing);
+  cursor.classList.toggle("is-drawing", mode === "draw");
+  cursor.classList.toggle("is-erasing", mode === "erase");
   cursor.classList.add("is-visible");
 }
 
@@ -267,15 +323,32 @@ function handleHandResult(result: HandLandmarkerResult) {
   if (!landmarks) {
     state.smoothedPoint = null;
     updatePinchState(false);
-    updateCursor(null, false);
+    updateCursor(null, "idle");
     setStatus("Show your hand", "warn");
     return;
   }
 
   const indexTip = landmarks[8];
+  const middleTip = landmarks[12];
   const thumbTip = landmarks[4];
-  const point = getSmoothedPoint(normalizedToCanvas(indexTip));
+  const indexPoint = normalizedToCanvas(indexTip);
+  const middlePoint = normalizedToCanvas(middleTip);
+  const eraserPoint = {
+    x: (indexPoint.x + middlePoint.x) / 2,
+    y: (indexPoint.y + middlePoint.y) / 2,
+  };
+  const eraserGesture = isTwoFingerEraserGesture(landmarks);
+  const point = getSmoothedPoint(eraserGesture ? eraserPoint : indexPoint);
   const distance = getDistance(indexTip, thumbTip);
+
+  if (eraserGesture) {
+    updatePinchState(false);
+    endStroke();
+    eraseAt(point);
+    updateCursor(point, "erase");
+    setStatus("Erasing", "erase");
+    return;
+  }
 
   const pinchedNow = state.isPinched
     ? distance < pinchEndThreshold
@@ -287,7 +360,7 @@ function handleHandResult(result: HandLandmarkerResult) {
     continueStroke(point);
   }
 
-  updateCursor(point, state.isPinched);
+  updateCursor(point, state.isPinched ? "draw" : "idle");
   setStatus(state.isPinched ? "Drawing" : "Tracking", state.isPinched ? "draw" : "ready");
 }
 
@@ -330,6 +403,8 @@ async function loadHandTracker() {
 }
 
 async function initializeHandTracker() {
+  if (state.trackingPaused) return;
+
   try {
     await loadHandTracker();
   } catch (error) {
@@ -340,6 +415,31 @@ async function initializeHandTracker() {
     setNotice(`Camera is on, but hand tracking failed: ${message}`);
     setStatus("Tracking unavailable", "warn");
   }
+}
+
+function pauseTracking() {
+  state.trackingPaused = true;
+  state.isPinched = false;
+  state.stablePinchFrames = 0;
+  state.stableReleaseFrames = 0;
+  endStroke();
+  updateCursor(null, "idle");
+  setStatus("Tracking paused", "warn");
+  toggleTrackingButton.textContent = "Start Tracking";
+}
+
+function resumeTracking() {
+  state.trackingPaused = false;
+  state.trackingFailed = false;
+  setNotice("");
+  toggleTrackingButton.textContent = "Stop Tracking";
+
+  if (state.handLandmarker) {
+    setStatus("Show your hand", "warn");
+    return;
+  }
+
+  void initializeHandTracker();
 }
 
 async function startCamera() {
@@ -384,7 +484,9 @@ function loop() {
 
   drawFrame();
 
-  if (state.handLandmarker && video.currentTime !== state.lastVideoTime) {
+  if (state.trackingPaused) {
+    updateCursor(null, "idle");
+  } else if (state.handLandmarker && video.currentTime !== state.lastVideoTime) {
     state.lastVideoTime = video.currentTime;
     try {
       const result = state.handLandmarker.detectForVideo(video, performance.now());
@@ -438,6 +540,14 @@ startButton.addEventListener("click", () => {
 undoButton.addEventListener("click", undoStroke);
 clearButton.addEventListener("click", clearDrawing);
 
+toggleTrackingButton.addEventListener("click", () => {
+  if (state.trackingPaused) {
+    resumeTracking();
+  } else {
+    pauseTracking();
+  }
+});
+
 hideUiButton.addEventListener("click", () => {
   document.body.classList.toggle("presentation-mode");
   hideUiButton.textContent = document.body.classList.contains("presentation-mode") ? "Show UI" : "Hide UI";
@@ -457,6 +567,14 @@ window.addEventListener("keydown", (event) => {
 
   if (key === "h" && !event.metaKey && !event.ctrlKey) {
     document.body.classList.toggle("presentation-mode");
+  }
+
+  if (key === "t" && !event.metaKey && !event.ctrlKey) {
+    if (state.trackingPaused) {
+      resumeTracking();
+    } else {
+      pauseTracking();
+    }
   }
 });
 
