@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#101418" />
+    <title>AirInk</title>
+  </head>
+  <body>
+    <main id="app" class="app-shell">
+      <section class="stage" aria-label="AirInk camera canvas">
+        <video id="camera" class="camera" playsinline muted></video>
+        <canvas id="ink-canvas" class="ink-canvas"></canvas>
+        <div id="cursor" class="finger-cursor" aria-hidden="true"></div>
+
+        <div id="permission-panel" class="permission-panel">
+          <h1>AirInk</h1>
+          <p>Draw inside your webcam feed with a pinch gesture.</p>
+          <button id="start-camera" class="primary-button" type="button">Start camera</button>
+          <p id="camera-error" class="camera-error" role="status"></p>
+        </div>
+
+        <div id="status-pill" class="status-pill" aria-live="polite">Camera idle</div>
+      </section>
+
+      <aside id="toolbar" class="toolbar" aria-label="Drawing controls">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>AirInk</span>
+        </div>
+
+        <div class="control-group" aria-label="Brush color">
+          <button class="swatch is-selected" type="button" data-color="#3cf2b5" aria-label="Mint brush"></button>
+          <button class="swatch" type="button" data-color="#ffda3d" aria-label="Yellow brush"></button>
+          <button class="swatch" type="button" data-color="#ff5c7a" aria-label="Rose brush"></button>
+          <button class="swatch" type="button" data-color="#5db7ff" aria-label="Blue brush"></button>
+          <button class="swatch" type="button" data-color="#ffffff" aria-label="White brush"></button>
+        </div>
+
+        <div class="control-group segmented" aria-label="Brush size">
+          <button type="button" data-size="5" aria-label="Small brush">S</button>
+          <button class="is-selected" type="button" data-size="9" aria-label="Medium brush">M</button>
+          <button type="button" data-size="15" aria-label="Large brush">L</button>
+        </div>
+
+        <div class="control-group actions">
+          <button id="undo" type="button" aria-label="Undo last stroke" title="Undo">Undo</button>
+          <button id="clear" type="button" aria-label="Clear drawing" title="Clear">Clear</button>
+        </div>
+
+        <label class="toggle-row">
+          <input id="mirror" type="checkbox" checked />
+          <span>Mirror</span>
+        </label>
+
+        <label class="toggle-row">
+          <input id="show-cursor" type="checkbox" checked />
+          <span>Cursor</span>
+        </label>
+
+        <button id="hide-ui" class="ghost-button" type="button">Hide UI</button>
+      </aside>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
