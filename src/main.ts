@@ -34,6 +34,7 @@ const permissionPanel = requiredElement<HTMLDivElement>("#permission-panel");
 const startButton = requiredElement<HTMLButtonElement>("#start-camera");
 const errorText = requiredElement<HTMLParagraphElement>("#camera-error");
 const statusPill = requiredElement<HTMLDivElement>("#status-pill");
+const notice = requiredElement<HTMLDivElement>("#notice");
 const mirrorToggle = requiredElement<HTMLInputElement>("#mirror");
 const showCursorToggle = requiredElement<HTMLInputElement>("#show-cursor");
 const hideUiButton = requiredElement<HTMLButtonElement>("#hide-ui");
@@ -65,6 +66,8 @@ const state = {
   lastVideoTime: -1,
   running: false,
   trackingReady: false,
+  trackingLoading: false,
+  trackingFailed: false,
 };
 
 const pinchStartThreshold = 0.055;
@@ -75,6 +78,11 @@ const smoothing = 0.38;
 function setStatus(message: string, mode: "idle" | "ready" | "draw" | "warn" = "idle") {
   statusPill.textContent = message;
   statusPill.dataset.mode = mode;
+}
+
+function setNotice(message: string) {
+  notice.textContent = message;
+  notice.classList.toggle("is-visible", message.length > 0);
 }
 
 function resizeCanvas() {
@@ -270,18 +278,15 @@ function handleHandResult(result: HandLandmarkerResult) {
   setStatus(state.isPinched ? "Drawing" : "Tracking", state.isPinched ? "draw" : "ready");
 }
 
-async function loadHandTracker() {
-  setStatus("Loading hand tracker", "idle");
-
-  const vision = await FilesetResolver.forVisionTasks(
-    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm",
-  );
-
-  state.handLandmarker = await HandLandmarker.createFromOptions(vision, {
+async function createHandLandmarker(
+  vision: Awaited<ReturnType<typeof FilesetResolver.forVisionTasks>>,
+  delegate: "GPU" | "CPU",
+) {
+  return HandLandmarker.createFromOptions(vision, {
     baseOptions: {
       modelAssetPath:
         "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
-      delegate: "GPU",
+      delegate,
     },
     runningMode: "VIDEO",
     numHands: 1,
@@ -289,12 +294,47 @@ async function loadHandTracker() {
     minHandPresenceConfidence: 0.55,
     minTrackingConfidence: 0.5,
   });
+}
+
+async function loadHandTracker() {
+  if (state.trackingLoading || state.trackingReady) return;
+
+  state.trackingLoading = true;
+  state.trackingFailed = false;
+  setStatus("Loading hand tracker", "idle");
+
+  const vision = await FilesetResolver.forVisionTasks(
+    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm",
+  );
+
+  try {
+    state.handLandmarker = await createHandLandmarker(vision, "GPU");
+  } catch (gpuError) {
+    console.warn("GPU hand tracker failed; retrying with CPU.", gpuError);
+    state.handLandmarker = await createHandLandmarker(vision, "CPU");
+  }
 
   state.trackingReady = true;
+  state.trackingLoading = false;
+  setStatus("Show your hand", "warn");
+}
+
+async function initializeHandTracker() {
+  try {
+    await loadHandTracker();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Hand tracking could not start.";
+    console.error("Hand tracking failed.", error);
+    state.trackingFailed = true;
+    state.trackingLoading = false;
+    setNotice(`Camera is on, but hand tracking failed: ${message}`);
+    setStatus("Tracking unavailable", "warn");
+  }
 }
 
 async function startCamera() {
   errorText.textContent = "";
+  setNotice("");
   startButton.disabled = true;
   startButton.textContent = "Starting...";
 
@@ -311,13 +351,15 @@ async function startCamera() {
     video.srcObject = stream;
     await video.play();
     permissionPanel.classList.add("is-hidden");
+    startButton.textContent = "Camera on";
 
-    if (!state.trackingReady) {
-      await loadHandTracker();
+    if (!state.running) {
+      state.running = true;
+      requestAnimationFrame(loop);
     }
 
-    state.running = true;
-    requestAnimationFrame(loop);
+    setStatus("Camera ready", "ready");
+    void initializeHandTracker();
   } catch (error) {
     const message = error instanceof Error ? error.message : "Camera could not start.";
     errorText.textContent = message;
@@ -334,8 +376,19 @@ function loop() {
 
   if (state.handLandmarker && video.currentTime !== state.lastVideoTime) {
     state.lastVideoTime = video.currentTime;
-    const result = state.handLandmarker.detectForVideo(video, performance.now());
-    handleHandResult(result);
+    try {
+      const result = state.handLandmarker.detectForVideo(video, performance.now());
+      handleHandResult(result);
+    } catch (error) {
+      console.error("Hand tracking frame failed.", error);
+      state.handLandmarker = null;
+      state.trackingReady = false;
+      state.trackingFailed = true;
+      setNotice("Camera is on, but hand tracking stopped. Reload the page to retry.");
+      setStatus("Tracking stopped", "warn");
+    }
+  } else if (!state.handLandmarker && !state.trackingLoading && !state.trackingFailed) {
+    setStatus("Camera ready", "ready");
   }
 
   requestAnimationFrame(loop);

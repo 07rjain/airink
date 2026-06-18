@@ -178,6 +178,25 @@ button {
   border-color: rgba(255, 218, 61, 0.38);
 }
 
+.notice {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  display: none;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 218, 61, 0.28);
+  border-radius: 8px;
+  background: rgba(21, 18, 10, 0.78);
+  color: #ffe9ad;
+  font-size: 13px;
+  backdrop-filter: blur(14px);
+}
+
+.notice.is-visible {
+  display: block;
+}
+
 .toolbar {
   display: flex;
   flex-direction: column;
