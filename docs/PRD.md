@@ -8,7 +8,7 @@
 
 **Core Problem**: During calls, users often need to point, sketch, circle, or annotate an idea quickly, but switching to screen sharing, whiteboards, or external drawing tools interrupts the conversation.
 
-**Solution Overview**: AirInk captures the user's webcam feed, tracks hand/finger gestures, draws strokes over the live camera image, and outputs the composed result through OBS Virtual Camera so video-call participants see the annotated webcam feed as the user's camera.
+**Solution Overview**: AirInk captures the user's webcam feed, tracks hand/finger gestures, draws strokes over the live camera image, and outputs the composed result to video-call software. The current MVP uses OBS Virtual Camera; the product direction is a packaged desktop app with guided setup first, then a native AirInk virtual camera later.
 
 **Target Market**:
 - Remote workers explaining concepts during calls.
@@ -20,7 +20,8 @@
 - User can draw a visible line on the webcam feed within 60 seconds of launching the app.
 - Finger-to-stroke latency stays under 100 ms on a modern laptop.
 - Gesture draw state has less than 5% accidental activation during a 5-minute test.
-- OBS Virtual Camera setup works with Google Meet in the target desktop environment.
+- Beta setup works with Google Meet in the target desktop environment.
+- A non-technical user can get from app launch to call-ready without terminal commands.
 - Users can complete a test explanation with draw, pause, clear, and undo without touching keyboard shortcuts.
 
 ## 2. Product Overview
@@ -33,18 +34,19 @@ The MVP prioritizes proving the end-to-end experience over building a native vir
 
 ### 2.2 Product Goals & Objectives
 
-**Primary Goal**: Create a reliable MVP that lets a user draw over their webcam feed using finger gestures and show that feed in Google Meet through OBS Virtual Camera.
+**Primary Goal**: Create a reliable experience that lets a user draw over their webcam feed using finger gestures and show that feed in Google Meet with minimal setup friction.
 
 **Secondary Goals**:
 - Provide intuitive gesture controls that do not require extra hardware.
 - Support basic drawing tools: pen, color, size, undo, clear, mirror mode.
-- Keep setup lightweight and local.
-- Establish a codebase that can later become a packaged desktop app.
+- Keep setup lightweight, local, and understandable.
+- Establish a path from browser MVP to packaged desktop app to native virtual camera.
 
 **SMART Goals**:
 - Build a browser MVP within the first development phase that displays webcam + drawing overlay at 30 FPS where hardware permits.
 - Implement pinch-to-draw, cursor preview, undo, and clear before the first internal demo.
 - Verify the composed feed in OBS Virtual Camera and Google Meet by the end of the MVP phase.
+- Design the next product milestone so a non-technical user can use AirInk without Node, npm, or local dev-server setup.
 - Document setup steps so a new user can run the app locally in under 10 minutes.
 
 ## 3. Product Requirements
@@ -131,6 +133,22 @@ The MVP prioritizes proving the end-to-end experience over building a native vir
 - Hidden UI mode leaves only webcam, drawing, and cursor/tracking indicators visible.
 - Controls remain usable on common laptop screen sizes.
 
+#### Epic 6: Product Onboarding
+
+**Description**: The product must guide non-technical users through install, camera permission, drawing test, and call setup.
+
+**User Stories**:
+- As a first-time user, I want AirInk to tell me the next setup step so that I do not need developer documentation.
+- As a caller, I want to test drawing before joining a real call so that I know it will work.
+- As a caller, I want clear guidance for OBS/Meet setup so that I can get ready quickly.
+
+**Acceptance Criteria**:
+- User can launch AirInk without using a terminal.
+- First-run flow includes camera check, gesture check, OBS/virtual-camera check, and call-app instructions.
+- App explains macOS permissions before asking the user to grant them.
+- Setup errors include clear recovery actions.
+- Product docs distinguish beta OBS setup from long-term native virtual camera support.
+
 ### 3.2 Non-Functional Requirements
 
 #### Performance Requirements
@@ -186,13 +204,15 @@ The MVP prioritizes proving the end-to-end experience over building a native vir
 
 ### 5.1 System Architecture
 
-**Architecture Pattern**: Client-side single-page web app for MVP.
+**Architecture Pattern**: Client-side single-page web app for MVP; packaged desktop app for product beta; native virtual camera extension for long-term product.
 
 **Technology Stack**:
 - Frontend: TypeScript, Vite, React or vanilla TypeScript depending on implementation simplicity.
 - Computer vision: MediaPipe Hand Landmarker for browser.
 - Rendering: HTML video element + Canvas 2D or WebGL-backed canvas if needed.
 - Output: OBS Browser Source or Window Capture + OBS Virtual Camera.
+- Product beta: packaged desktop wrapper with guided OBS setup.
+- Long-term: native virtual camera output.
 
 **Third-Party Services**:
 - MediaPipe model assets loaded locally or from a documented CDN during development.
@@ -217,7 +237,7 @@ The MVP prioritizes proving the end-to-end experience over building a native vir
 
 ### 6.1 MVP Definition
 
-**MVP Scope - Must Have for Launch**:
+**MVP Scope - Must Have for Prototype Launch**:
 - Webcam preview.
 - Hand/finger tracking.
 - Pinch-to-draw gesture.
@@ -229,14 +249,22 @@ The MVP prioritizes proving the end-to-end experience over building a native vir
 - Full-screen/presentation mode for OBS.
 - Setup documentation for Google Meet via OBS Virtual Camera.
 
-**Post-MVP Features - Nice to Have**:
-- Native desktop wrapper.
-- Direct virtual camera without OBS.
+**Product Beta Scope - Must Have for Non-Technical Users**:
+- Packaged desktop app.
+- First-run setup wizard.
+- Camera permission explanation.
+- Gesture test step.
+- OBS installed/missing guidance.
+- Meet/Zoom/Discord camera selection instructions.
+- No Node/npm/dev-server requirement.
+
+**Post-Beta Features - Nice to Have**:
 - Better gesture calibration.
 - Shape recognition for arrows, circles, and boxes.
 - Multi-color quick gestures.
 - Recording/export of annotated sessions.
 - Background blur or segmentation.
+- Direct native virtual camera without OBS.
 
 ### 6.2 Development Phases
 
@@ -264,11 +292,25 @@ The MVP prioritizes proving the end-to-end experience over building a native vir
 - Improve performance and frame scheduling.
 - Add browser compatibility notes.
 
+**Phase 5: Product Onboarding Beta** (Timeline: 1-2 weeks)
+- Package AirInk as a desktop app.
+- Add first-run setup wizard.
+- Add setup health checks.
+- Add user-friendly permission guidance.
+- Validate the OBS/Meet flow on a clean macOS machine.
+
+**Phase 6: Native Virtual Camera Spike** (Timeline: 2-4 weeks)
+- Prototype native virtual camera output.
+- Validate macOS signing/extension requirements.
+- Test compatibility with Meet, Zoom, Discord, and browser camera pickers.
+- Decide whether replacing OBS is worth the support burden.
+
 ### 6.3 Release Strategy
 - Start as a local developer preview.
 - Test with one real Google Meet call.
 - Collect notes on latency, gesture false positives, and setup friction.
-- Only consider packaging after the OBS route is proven.
+- Package the app after the OBS route is proven.
+- Treat the native virtual camera as a separate validated investment, not part of the prototype MVP.
 
 ## 7. Quality Assurance & Testing
 

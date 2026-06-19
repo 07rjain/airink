@@ -16,6 +16,7 @@ AirInk lets you:
 MVP implemented as a local browser app.
 
 - [Product requirements](docs/PRD.md)
+- [Product onboarding plan](docs/PRODUCT_ONBOARDING_PLAN.md)
 - [OBS and Google Meet setup](docs/OBS_MEET_SETUP.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
 
@@ -54,6 +55,16 @@ Short setup:
 3. In OBS, add `Window Capture` for the AirInk browser window.
 4. Start `OBS Virtual Camera`.
 5. In Google Meet, choose `OBS Virtual Camera`.
+
+## Product Direction
+
+The current app proves the core gesture-drawing experience, but it is not yet easy enough for non-technical users. The next product milestone is a packaged desktop app with a first-run setup wizard:
+
+```text
+Download AirInk -> Start camera -> Test drawing -> Guided OBS setup -> Choose OBS Virtual Camera
+```
+
+The long-term version should expose `AirInk Camera` directly as a native virtual camera, but that should come after the desktop app and onboarding flow prove that users can get value quickly. See [Product onboarding plan](docs/PRODUCT_ONBOARDING_PLAN.md).
 
 ## Controls
 
